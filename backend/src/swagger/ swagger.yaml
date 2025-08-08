@@ -1,0 +1,418 @@
+openapi: 3.0.0
+info:
+  title: Category API
+  version: 1.0.0
+  description: API for managing product categories and their association with main categories.
+
+servers:
+  - url: http://localhost:5912/api
+    description: Local Development Server
+
+tags:
+  - name: Categories
+    description: Operations related to product categories
+
+paths:
+  /categories:
+    post:
+      summary: Create a new Category
+      tags:
+        - Categories
+      description: Creates a new category and associates it with a main category.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+            examples:
+              newCategory:
+                summary: Example Category Creation
+                value:
+                  categoryName: Electronics
+                  mainCategory: 60d0fe4f5311236168a10001 # Example MainCategory ID
+      responses:
+        '201':
+          description: Category created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+              examples:
+                createdCategory:
+                  summary: Created Category Object
+                  value:
+                    _id: 60d0fe4f5311236168a10002
+                    categoryName: Electronics
+                    mainCategory:
+                      _id: 60d0fe4f5311236168a10001
+                      mainCategoryName: Gadgets
+                    createdAt: '2023-10-26T10:00:00.000Z'
+                    updatedAt: '2023-10-26T10:00:00.000Z'
+        '400':
+          description: Bad Request (e.g., validation failed, category already exists under main category, invalid ID).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Validation Error
+                  value:
+                    message: Validation failed
+                    errors:
+                      - path: categoryName
+                        message: String must contain at least 3 character(s)
+                duplicateCategory:
+                  summary: Duplicate Category Error
+                  value:
+                    message: Category with this name already exists under this Main Category.
+                invalidMainCategoryId:
+                  summary: Invalid Main Category ID
+                  value:
+                    message: Invalid Main Category ID provided.
+        '404':
+          description: Main Category not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                mainCategoryNotFound:
+                  summary: Main Category Not Found
+                  value:
+                    message: Main Category not found.
+        '500':
+          description: Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get all Categories
+      tags:
+        - Categories
+      description: Retrieves a list of all categories, populated with their associated main category details.
+      responses:
+        '200':
+          description: A list of categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+              examples:
+                categoryList:
+                  summary: Array of Categories
+                  value:
+                    - _id: 60d0fe4f5311236168a10002
+                      categoryName: Electronics
+                      mainCategory:
+                        _id: 60d0fe4f5311236168a10001
+                        mainCategoryName: Gadgets
+                      createdAt: '2023-10-26T10:00:00.000Z'
+                      updatedAt: '2023-10-26T10:00:00.000Z'
+                    - _id: 60d0fe4f5311236168a10003
+                      categoryName: Clothing
+                      mainCategory:
+                        _id: 60d0fe4f5311236168a10004
+                        mainCategoryName: Apparel
+                      createdAt: '2023-10-26T10:05:00.000Z'
+                      updatedAt: '2023-10-26T10:05:00.000Z'
+        '500':
+          description: Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /categories/{id}:
+    get:
+      summary: Get a single Category by ID
+      tags:
+        - Categories
+      description: Retrieves a single category by its ID, populated with its associated main category details.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: mongo-id
+          required: true
+          description: ID of the category to retrieve.
+          example: 60d0fe4f5311236168a10002
+      responses:
+        '200':
+          description: Category found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+              examples:
+                singleCategory:
+                  summary: Single Category Object
+                  value:
+                    _id: 60d0fe4f5311236168a10002
+                    categoryName: Electronics
+                    mainCategory:
+                      _id: 60d0fe4f5311236168a10001
+                      mainCategoryName: Gadgets
+                    createdAt: '2023-10-26T10:00:00.000Z'
+                    updatedAt: '2023-10-26T10:00:00.000Z'
+        '404':
+          description: Category not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                categoryNotFound:
+                  summary: Category Not Found Error
+                  value:
+                    message: Category not found.
+        '500':
+          description: Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update a Category
+      tags:
+        - Categories
+      description: Updates an existing category by its ID. Allows updating of category name and/or main category.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: mongo-id
+          required: true
+          description: ID of the category to update.
+          example: 60d0fe4f5311236168a10002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+            examples:
+              updateCategoryName:
+                summary: Update Category Name
+                value:
+                  categoryName: New Electronics Name
+              updateMainCategory:
+                summary: Change Main Category
+                value:
+                  mainCategory: 60d0fe4f5311236168a10005 # Another example MainCategory ID
+              updateBoth:
+                summary: Update Both Fields
+                value:
+                  categoryName: Updated Gadgets
+                  mainCategory: 60d0fe4f5311236168a10006
+      responses:
+        '200':
+          description: Category updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+              examples:
+                updatedCategory:
+                  summary: Updated Category Object
+                  value:
+                    _id: 60d0fe4f5311236168a10002
+                    categoryName: New Electronics Name
+                    mainCategory:
+                      _id: 60d0fe4f5311236168a10001
+                      mainCategoryName: Gadgets
+                    createdAt: '2023-10-26T10:00:00.000Z'
+                    updatedAt: '2023-10-26T10:15:00.000Z'
+        '400':
+          description: Bad Request (e.g., validation failed, duplicate category name under specified main category, invalid ID).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Validation Error
+                  value:
+                    message: Validation failed
+                    errors:
+                      - path: categoryName
+                        message: String must contain at least 3 character(s)
+                duplicateCategory:
+                  summary: Duplicate Category Error
+                  value:
+                    message: Category with this name already exists under the specified Main Category.
+                invalidMainCategoryId:
+                  summary: Invalid Main Category ID
+                  value:
+                    message: Invalid Main Category ID provided.
+        '404':
+          description: Category or Main Category not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                categoryNotFound:
+                  summary: Category Not Found Error
+                  value:
+                    message: Category not found.
+                mainCategoryNotFound:
+                  summary: Main Category Not Found Error
+                  value:
+                    message: Main Category not found.
+        '500':
+          description: Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a Category
+      tags:
+        - Categories
+      description: Deletes a category by its ID.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: mongo-id
+          required: true
+          description: ID of the category to delete.
+          example: 60d0fe4f5311236168a10002
+      responses:
+        '200':
+          description: Category removed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Category removed.
+        '404':
+          description: Category not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                categoryNotFound:
+                  summary: Category Not Found Error
+                  value:
+                    message: Category not found.
+        '500':
+          description: Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: The unique identifier of the category.
+          example: 60d0fe4f5311236168a10002
+        categoryName:
+          type: string
+          description: The name of the category.
+          example: Electronics
+        mainCategory:
+          $ref: '#/components/schemas/MainCategory'
+        createdAt:
+          type: string
+          format: date-time
+          description: The timestamp when the category was created.
+          example: '2023-10-26T10:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the category was last updated.
+          example: '2023-10-26T10:00:00.000Z'
+      required:
+        - _id
+        - categoryName
+        - mainCategory
+        - createdAt
+        - updatedAt
+
+    MainCategory:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: The unique identifier of the main category.
+          example: 60d0fe4f5311236168a10001
+        mainCategoryName:
+          type: string
+          description: The name of the main category.
+          example: Gadgets
+      required:
+        - _id
+        - mainCategoryName
+
+    CreateCategoryRequest:
+      type: object
+      properties:
+        categoryName:
+          type: string
+          description: The name of the new category.
+          minLength: 3
+          example: Electronics
+        mainCategory:
+          type: string
+          description: The ID of the main category to associate with. Must be a valid MongoDB ObjectId.
+          pattern: '^[0-9a-fA-F]{24}$' # Regex for MongoDB ObjectId
+          example: 60d0fe4f5311236168a10001
+      required:
+        - categoryName
+        - mainCategory
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        categoryName:
+          type: string
+          description: The new name for the category (optional).
+          minLength: 3
+          example: Updated Electronics
+        mainCategory:
+          type: string
+          description: The new main category ID to associate with (optional). Must be a valid MongoDB ObjectId.
+          pattern: '^[0-9a-fA-F]{24}$'
+          example: 60d0fe4f5311236168a10005
+      # No required fields as either or both can be updated
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A descriptive error message.
+          example: Category not found.
+        errors:
+          type: array
+          description: (Optional) Details of validation errors.
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                example: categoryName
+              message:
+                type: string
+                example: String must contain at least 3 character(s)

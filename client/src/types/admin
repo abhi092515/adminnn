@@ -1,0 +1,127 @@
+// import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
+// import { queryClient } from "./lib/queryClient";
+// import { QueryClientProvider } from "@tanstack/react-query";
+// import { Toaster } from "sonner";
+// import { TooltipProvider } from "@/components/ui/tooltip";
+// import { Sidebar } from "@/components/layout/sidebar";
+// import { Topbar } from "@/components/layout/topbar";
+// import { AuthProvider } from "./context/AuthContext"; 
+// import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+// import LoginPage from "./pages/LoginPage";
+
+// // Import all your admin pages
+// import Dashboard from "@/pages/dashboard";
+// import MainCategoryPage from "@/pages/main-category";
+// import CategorySection from "@/pages/category";
+// import SectionPage from "@/pages/SectionPage"; 
+// import TopicPage from "./pages/TopicPage"; 
+// import BooksPage from "./pages/BooksPage";
+// import NewBookPage from "./pages/new-book-page";
+// import EditBookPage from "./pages/books-edit-form-page";
+// import EbooksPage from "./pages/EbooksPage";
+// import NewEbookPage from "./pages/new-ebook-page"; 
+// import EditEbookPage from "./pages/edit-ebook-page"; 
+// import NotFound from "@/pages/not-found";
+
+// // This function gets the title for the top bar based on the URL
+// function getPageTitle(pathname: string): string {
+//   // Handle dynamic routes first
+//   if (pathname.startsWith("/admin/books/edit")) return "Edit Book";
+//   if (pathname.startsWith("/admin/ebooks/edit")) return "Edit E-book";
+  
+//   const titles: Record<string, string> = {
+//     "/admin/dashboard": "Dashboard",
+//     "/admin/main-category": "Main Categories",
+//     "/admin/category-section": "Category Section",
+//     "/admin/sections": "Sections",
+//     "/admin/topics": "Topics", 
+//     "/admin/books": "Manage Books", 
+//     "/admin/books/new": "Add New Book",
+//     "/admin/ebooks": "Manage E-books",
+//     "/admin/ebooks/new": "Add New E-book",
+//   };
+//   // We remove the /admin prefix to match the key
+//   const key = pathname.replace('/admin', '') || '/';
+//   return titles[key] || "Admin Dashboard";
+// }
+
+// // This component holds the persistent layout for the entire admin panel
+// const AdminLayout = ({ children }: { children: React.ReactNode }) => {
+//   const [location] = useLocation();
+//   return (
+//     <div className="flex h-screen bg-gray-50">
+//       <Sidebar />
+//       <div className="flex-1 flex flex-col overflow-hidden">
+//         <Topbar title={getPageTitle(location)} />
+//         <main className="flex-1 overflow-auto p-6">
+//           {children}
+//         </main>
+//       </div>
+//     </div>
+//   );
+// };
+
+// // This component defines all the routes within the admin panel
+// const AdminRoutes = () => (
+//   <AdminLayout>
+//     <Switch>
+//       <Route path="/dashboard" component={Dashboard} />
+//       <Route path="/main-category" component={MainCategoryPage} />
+//       <Route path="/category-section" component={CategorySection} />
+//       <Route path="/sections" component={SectionPage} />
+//       <Route path="/topics" component={TopicPage} />
+//       <Route path="/books/new" component={NewBookPage} />
+//       <Route path="/books/edit/:id" component={EditBookPage} />
+//       <Route path="/books" component={BooksPage} />
+//       <Route path="/ebooks/new" component={NewEbookPage} />
+//       <Route path="/ebooks/edit/:id" component={EditEbookPage} />
+//       <Route path="/ebooks" component={EbooksPage} />
+      
+//       {/* Fallback for any unknown /admin routes */}
+//       <Route component={NotFound} />
+//     </Switch>
+//   </AdminLayout>
+// );
+
+// // This is the main router that handles top-level navigation
+// function AppRouter() {
+//   return (
+//     <Switch>
+//       {/* Publicly accessible login page */}
+//       <Route path="/login" component={LoginPage} />
+
+//       {/* All admin routes are nested under /admin and protected */}
+//       <Route path="/admin/:rest*">
+//         <ProtectedRoute roles={['superadmin']}>
+//           {/* Using Wouter's nested Router sets the base path for all child routes */}
+//           <WouterRouter base="/admin">
+//             <AdminRoutes />
+//           </WouterRouter>
+//         </ProtectedRoute>
+//       </Route>
+
+//       {/* Default route: if logged in, go to dashboard, otherwise go to login */}
+//       <Route path="/">
+//         <ProtectedRoute>
+//           <Redirect to="/admin/dashboard" />
+//         </ProtectedRoute>
+//       </Route>
+      
+//       <Route component={NotFound} />
+//     </Switch>
+//   );
+// }
+
+// // The root App component just sets up all the providers
+// export default function App() {
+//   return (
+//     <QueryClientProvider client={queryClient}>
+//       <AuthProvider>
+//         <TooltipProvider>
+//           <Toaster richColors position="top-right" />
+//           <AppRouter />
+//         </TooltipProvider>
+//       </AuthProvider>
+//     </QueryClientProvider>
+//   );
+// }
