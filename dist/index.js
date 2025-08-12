@@ -410,12 +410,8 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
-  const port = 5009;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true
-  }, () => {
-    log(`serving on port ${port}`);
+  const port = process.env.PORT || 5009;
+  server.listen(port, () => {
+    log(`Server listening on port ${port}`);
   });
 })();

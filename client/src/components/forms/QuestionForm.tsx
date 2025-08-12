@@ -15,9 +15,10 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { CKEditorComponent } from "@/components/ui/CKEditorComponent";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
-// This interface reflects the final data structure sent to the backend.
+// --- INTERFACES, SCHEMAS, AND TRANSFORMATION LOGIC (No changes needed here) ---
 interface BackendPayload {
     mainCategory: string;
     category: string;
@@ -39,7 +40,6 @@ interface BackendPayload {
     quesStatus?: string;
 }
 
-// The form's Zod schema, updated to match the final backend schema.
 const formSchema = z.object({
     mainCategory: z.string().min(1, "Please select a main category."),
     category: z.string().min(1, "Please select a category."),
@@ -70,9 +70,9 @@ type FormValues = z.infer<typeof formSchema>;
 type QuestionFormProps = {
   onSubmit: (data: BackendPayload, isFinished: boolean) => void;
   isPending?: boolean;
+  initialValues?: FormValues | null;
 };
 
-// This function correctly transforms form data into the backend payload format.
 const transformDataForBackend = (values: FormValues): BackendPayload => {
     const question = { en: values.questionEnglish, hi: values.questionHindi };
     const solution = { en: values.solutionEnglish || '', hi: values.solutionHindi || '' };
@@ -137,17 +137,59 @@ const transformDataForBackend = (values: FormValues): BackendPayload => {
 };
 
 
-export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
+const EditableEditor = ({ field, editorKey }: { field: any, editorKey: string }) => {
+    const [isActive, setIsActive] = useState(false);
+    
+    const createMarkup = (htmlString: string) => {
+        if (typeof document === 'undefined') {
+            return { __html: htmlString || '' };
+        }
+        const cleanText = new DOMParser().parseFromString(htmlString || '', 'text/html').body.textContent || '';
+        return { __html: cleanText };
+    };
+
+    if (isActive) {
+        return (
+            <CKEditorComponent
+                key={editorKey}
+                data={field.value}
+                onChange={field.onChange}
+                onBlur={() => setIsActive(false)}
+            />
+        );
+    }
+    
+    const displayProps = {
+        onClick: () => setIsActive(true),
+        className: cn(
+            "prose prose-sm max-w-none w-full min-h-[40px] px-3 py-2 border rounded-md cursor-text",
+            !field.value && "text-muted-foreground"
+        )
+    };
+    
+    if (field.value) {
+        return <div {...displayProps} dangerouslySetInnerHTML={createMarkup(field.value)} />;
+    } else {
+        return <div {...displayProps}><p>Click to enter text...</p></div>;
+    }
+};
+
+
+export function QuestionForm({ onSubmit, isPending, initialValues }: QuestionFormProps) {
     const [_, setLocation] = useLocation();
     const { 
         mainCategories, categories, sections, topics, subTopics, 
         setSelectedMainCategory, setSelectedCategory, setSelectedSection, setSelectedTopic,
         isLoadingMainCategories, isLoadingCategories, isLoadingSections, isLoadingTopics, isLoadingSubTopics 
     } = useQuestionFormData();
+    
+    const [formResetKey, setFormResetKey] = useState(Date.now());
 
+    // ✅ FIX 1: Set defaultValues directly from initialValues.
+    // This ensures the form is initialized with the correct data from the start.
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
+        defaultValues: initialValues || {
             mainCategory: "",
             category: "",
             sectionId: "",
@@ -163,6 +205,19 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
             quesStatus: "fresh",
         },
     });
+
+    // ✅ FIX 2: This useEffect now correctly populates the cascading dropdowns
+    // once the initialValues have been loaded into the form.
+    useEffect(() => {
+        if (initialValues) {
+            form.reset(initialValues);
+            setSelectedMainCategory(initialValues.mainCategory || null);
+            setSelectedCategory(initialValues.category || null);
+            setSelectedSection(initialValues.sectionId || null);
+            setSelectedTopic(initialValues.topicId || null);
+        }
+    }, [initialValues, form.reset, setSelectedMainCategory, setSelectedCategory, setSelectedSection, setSelectedTopic]);
+
 
     const { fields: optionsEnglishFields, update: updateEnglishOptions } = useFieldArray({ control: form.control, name: "optionsEnglish" });
     const { fields: optionsHindiFields, update: updateHindiOptions } = useFieldArray({ control: form.control, name: "optionsHindi" });
@@ -188,22 +243,16 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
     const handleFinalSubmit = (values: FormValues) => handleFormSubmit(values, true);
 
     const handleNextQuestion = async () => {
-        // 1. Check if the current form data is valid
         const isValid = await form.trigger();
-        
         if (isValid) {
-            // 2. If valid, submit the data by calling the parent's function.
-            //    We pass 'false' because the user is not finished yet.
             handleFormSubmit(form.getValues(), false);
-
-            // 3. Reset the form for the next entry, but preserve the selected categories.
+            
             form.reset({
                 mainCategory: form.getValues('mainCategory'),
                 category: form.getValues('category'),
                 sectionId: form.getValues('sectionId'),
                 topicId: form.getValues('topicId'),
                 subTopicId: form.getValues('subTopicId'),
-                // Reset all other fields to their default state
                 quesType: "single_choice",
                 answerType: "optional",
                 difficultyLevel: "3",
@@ -221,6 +270,9 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                 priority: 1,
                 quesStatus: "fresh",
             });
+            
+            setFormResetKey(Date.now());
+            
             toast.info("Question submitted. Form ready for the next entry.");
         } else {
             toast.error("Please fix the errors before proceeding.");
@@ -234,7 +286,6 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                     <CardHeader><CardTitle>Question Setup</CardTitle></CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                            {/* --- Start of Dropdown Code --- */}
                             <FormField control={form.control} name="mainCategory" render={({ field }) => ( 
                                 <FormItem>
                                     <FormLabel>Main Category</FormLabel>
@@ -326,7 +377,6 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                                     <FormMessage />
                                 </FormItem> 
                             )}/>
-                            {/* --- End of Dropdown Code --- */}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-8 items-start pt-4">
                             <FormField name="quesType" control={form.control} render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Question Type</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2 pt-2 sm:flex-row sm:flex-wrap sm:space-x-4 sm:space-y-0"><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="single_choice" /></FormControl><FormLabel className="font-normal">Single Choice</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="comprehension" /></FormControl><FormLabel className="font-normal">Comprehension</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
@@ -344,8 +394,8 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                     <Card>
                         <CardHeader><CardTitle>English</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
-                            {quesType === 'comprehension' && <FormField name="comprehensionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Comprehension (English)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />}
-                            <FormField name="questionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Question (English)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                            {quesType === 'comprehension' && <FormField name="comprehensionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Comprehension (English)</FormLabel><FormControl><EditableEditor field={field} editorKey={`comprehension-en-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />}
+                            <FormField name="questionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Question (English)</FormLabel><FormControl><EditableEditor field={field} editorKey={`question-en-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />
                             {(answerType === 'optional' || answerType === 'multi-select') && (
                                 <div className="space-y-3">
                                     <FormLabel>Options (English)</FormLabel>
@@ -360,7 +410,7 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                                                             {answerType === 'optional' ? ( <FormControl><RadioGroupItem value={String(index)} /></FormControl> ) : ( <FormField control={form.control} name={`optionsEnglish.${index}.isCorrect`} render={({ field: checkboxField }) => (<FormControl><Checkbox checked={checkboxField.value} onCheckedChange={(checked) => { checkboxField.onChange(checked); form.setValue(`optionsHindi.${index}.isCorrect`, !!checked); }} /></FormControl>)}/> )}
                                                         </div>
                                                         <FormField control={form.control} name={`optionsEnglish.${index}.text`} render={({ field: textField }) => (
-                                                            <FormItem className="w-full"><FormControl><CKEditorComponent data={textField.value} onChange={textField.onChange} /></FormControl></FormItem>
+                                                            <FormItem className="flex-grow"><FormControl><EditableEditor field={textField} editorKey={`${item.id}-en-${formResetKey}`} /></FormControl></FormItem>
                                                         )}/>
                                                     </div>
                                                 ))}
@@ -369,15 +419,15 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                                     />
                                 </div>
                             )}
-                            <FormField name="solutionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Solution (English)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField name="solutionEnglish" control={form.control} render={({ field }) => (<FormItem><FormLabel>Solution (English)</FormLabel><FormControl><EditableEditor field={field} editorKey={`solution-en-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />
                         </CardContent>
                     </Card>
 
                     <Card>
                          <CardHeader><CardTitle>Hindi</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
-                           {quesType === 'comprehension' && <FormField name="comprehensionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Comprehension (Hindi)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />}
-                           <FormField name="questionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Question (Hindi)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                           {quesType === 'comprehension' && <FormField name="comprehensionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Comprehension (Hindi)</FormLabel><FormControl><EditableEditor field={field} editorKey={`comprehension-hi-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />}
+                           <FormField name="questionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Question (Hindi)</FormLabel><FormControl><EditableEditor field={field} editorKey={`question-hi-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />
                            {(answerType === 'optional' || answerType === 'multi-select') && (
                                <div className="space-y-3">
                                    <FormLabel>Options (Hindi)</FormLabel>
@@ -392,7 +442,7 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                                                            {answerType === 'optional' ? ( <RadioGroupItem value={String(index)} checked={form.getValues(`optionsEnglish.${index}.isCorrect`)} /> ) : ( <Checkbox checked={form.getValues(`optionsEnglish.${index}.isCorrect`)} />)}
                                                        </div>
                                                        <FormField control={form.control} name={`optionsHindi.${index}.text`} render={({ field: textField }) => ( 
-                                                            <FormItem className="w-full"><FormControl><CKEditorComponent data={textField.value} onChange={textField.onChange} /></FormControl></FormItem>
+                                                            <FormItem className="flex-grow"><FormControl><EditableEditor field={textField} editorKey={`${item.id}-hi-${formResetKey}`} /></FormControl></FormItem>
                                                         )}/>
                                                    </div>
                                                ))}
@@ -401,7 +451,7 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                                    />
                                </div>
                            )}
-                           <FormField name="solutionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Solution (Hindi)</FormLabel><FormControl><CKEditorComponent data={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                           <FormField name="solutionHindi" control={form.control} render={({ field }) => (<FormItem><FormLabel>Solution (Hindi)</FormLabel><FormControl><EditableEditor field={field} editorKey={`solution-hi-${formResetKey}`} /></FormControl><FormMessage /></FormItem>)} />
                         </CardContent>
                     </Card>
                 </div>
@@ -429,13 +479,15 @@ export function QuestionForm({ onSubmit, isPending }: QuestionFormProps) {
                     />
                     <div className="flex justify-end items-center gap-4">
                         <Button type="button" variant="outline" onClick={() => setLocation('/questions')}>Cancel</Button>
-                        <Button type="button" variant="secondary" onClick={handleNextQuestion} disabled={isPending}>
-                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Next Question
-                    </Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Finish
+                        {!initialValues && (
+                            <Button type="button" variant="secondary" onClick={handleNextQuestion} disabled={isPending}>
+                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Next Question
+                            </Button>
+                        )}
+                        <Button type="submit" disabled={isPending}>
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {initialValues ? 'Save Changes' : 'Finish'}
                         </Button>
                     </div>
                 </div>

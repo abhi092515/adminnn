@@ -1,7 +1,9 @@
+// src/hooks/useQuestionFilters.ts
+
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-const API_BASE_URL = 'http://localhost:5099/api'; // Adjust if needed
+const API_BASE_URL = 'http://localhost:5099/api';
 
 // --- API Functions for fetching dropdown data ---
 
@@ -28,36 +30,47 @@ export function useQuestionFilters() {
     const [selectedSection, setSelectedSection] = useState('');
     const [selectedTopic, setSelectedTopic] = useState('');
 
-    const sectionsQuery = useQuery({ 
-        queryKey: ['filterSections'], 
+    // ✅ FIX: Fetch ALL sections and topics unconditionally for use in the table.
+    const allSectionsQuery = useQuery({ 
+        queryKey: ['allFilterSections'], 
         queryFn: () => fetchApiData('sections') 
     });
 
-    const topicsQuery = useQuery({
-        queryKey: ['filterTopics', selectedSection],
-        queryFn: () => fetchTopicsBySection(selectedSection),
-        enabled: !!selectedSection, // Only run this query when a section is selected
+    const allTopicsQuery = useQuery({ 
+        queryKey: ['allFilterTopics'], 
+        queryFn: () => fetchApiData('topics') 
     });
 
-    const subTopicsQuery = useQuery({
-        queryKey: ['filterSubTopics', selectedTopic],
+    // These queries remain dependent on user selection for the filter dropdowns
+    const topicsForFilterQuery = useQuery({
+        queryKey: ['dependentFilterTopics', selectedSection],
+        queryFn: () => fetchTopicsBySection(selectedSection),
+        enabled: !!selectedSection,
+    });
+
+    const subTopicsForFilterQuery = useQuery({
+        queryKey: ['dependentFilterSubTopics', selectedTopic],
         queryFn: () => fetchSubTopicsByTopic(selectedTopic),
-        enabled: !!selectedTopic, // Only run this query when a topic is selected
+        enabled: !!selectedTopic,
     });
 
     return {
-        // Data
-        sections: sectionsQuery.data,
-        topics: topicsQuery.data,
-        subTopics: subTopicsQuery.data,
+        // Data for display in the results table
+        sections: allSectionsQuery.data,
+        topics: allTopicsQuery.data,
+        
+        // Data for the interactive filter dropdowns
+        topicsForFilter: topicsForFilterQuery.data,
+        subTopics: subTopicsForFilterQuery.data,
         
         // State Setters to trigger dependent queries
         setSelectedSection,
         setSelectedTopic,
 
         // Loading States
-        isLoadingSections: sectionsQuery.isLoading,
-        isLoadingTopics: topicsQuery.isLoading,
-        isLoadingSubTopics: subTopicsQuery.isLoading,
+        isLoadingSections: allSectionsQuery.isLoading,
+        isLoadingTopics: allTopicsQuery.isLoading,
+        isLoadingTopicsForFilter: topicsForFilterQuery.isLoading,
+        isLoadingSubTopics: subTopicsForFilterQuery.isLoading,
     };
 }

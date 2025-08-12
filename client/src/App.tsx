@@ -63,7 +63,7 @@ import EditInstructionPage from './pages/EditInstructionPage';
 import DuplicateQuestionPage from './pages/DuplicateQuestionPage'; 
 import AllQuestionsPage from './pages/AllQuestionsPage';     
 import NewQuestionPage from './pages/NewQuestionPage';       
-// import EditQuestionPage from './pages/EditQuestionPage';  
+import EditQuestionPage from './pages/EditQuestionPage';  
 import SubTopicsPage from './pages/SubTopicsPage';
 import NewSubTopicPage from './pages/NewSubTopicPage';
 import EditSubTopicPage from './pages/EditSubTopicPage';
@@ -200,6 +200,8 @@ function AppRouter() {
         <Route path="/questions/new" component={NewQuestionPage} />    
         
         <Route path="/questions" component={AllQuestionsPage} />
+        <Route path="/questions/edit/:id" component={EditQuestionPage} />
+
         <Route path="/duplicate-questions" component={DuplicateQuestionPage} />
         <Route path="/instructions/new" component={NewInstructionPage} />
         <Route path="/instructions/edit/:id" component={EditInstructionPage} />

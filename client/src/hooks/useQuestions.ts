@@ -1,3 +1,5 @@
+// src/hooks/useQuestions.ts
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -7,10 +9,11 @@ const API_BASE_URL = 'http://localhost:5099/api'; // Adjust if needed
 export interface Question {
     _id: string;
     questionId: string;
-    question: string;
-    topic: { name: string };
-    section: { name: string };
+    question: { en: string; hi: string };
+    topic: { name: string; id: string };
+    section: { name: string; id: string };
     difficultyLevel: number;
+    [key: string]: any;
 }
 
 export interface QuestionFilters {
@@ -33,7 +36,7 @@ export interface QuestionFilters {
   reviewer?: string;
   admin?: string;
   reportedType?: 'formatting_issue' | 'no_solution' | 'others' | 'wrong_answer' | 'wrong_question';
-} 
+}
 
 interface QuestionsApiResponse {
     questions: Question[];
@@ -57,7 +60,6 @@ const fetchQuestions = async (filters: QuestionFilters): Promise<QuestionsApiRes
     return result.data;
 };
 
-// ✅ ADD: API function to create a question
 const createQuestion = async (data: any) => {
     const response = await fetch(`${API_BASE_URL}/questions`, {
         method: 'POST',
@@ -71,6 +73,38 @@ const createQuestion = async (data: any) => {
     return response.json();
 };
 
+const fetchQuestionById = async (id: string): Promise<Question> => {
+    const response = await fetch(`${API_BASE_URL}/questions/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch question');
+    const result = await response.json();
+    return result.data;
+};
+
+const updateQuestion = async ({ id, data }: { id: string, data: any }) => {
+    const response = await fetch(`${API_BASE_URL}/questions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update question');
+    }
+    return response.json();
+};
+
+const deleteQuestion = async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/questions/${id}`, {
+        method: 'DELETE',
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete question');
+    }
+    return response.json();
+};
+
+
 // --- React Query Hook ---
 export function useQuestions(filters: QuestionFilters = {}) {
     const queryClient = useQueryClient();
@@ -81,7 +115,6 @@ export function useQuestions(filters: QuestionFilters = {}) {
         keepPreviousData: true,
     });
 
-    // ✅ ADD: The mutation for creating a new question
     const createMutation = useMutation({
         mutationFn: createQuestion,
         onSuccess: () => {
@@ -91,12 +124,43 @@ export function useQuestions(filters: QuestionFilters = {}) {
         onError: (err: Error) => toast.error(err.message),
     });
 
-    // ✅ UPDATED: The hook now returns the mutations alongside the query results
+    // ✅ FIX: Moved the updateMutation logic inside the main hook.
+    const updateMutation = useMutation({
+        mutationFn: updateQuestion,
+        onSuccess: (data, variables) => {
+            toast.success("Question updated successfully!");
+            queryClient.invalidateQueries({ queryKey: ['questions'] });
+            queryClient.invalidateQueries({ queryKey: ['question', variables.id] });
+        },
+        onError: (err: Error) => toast.error(err.message),
+    });
+
+    // ✅ FIX: Moved the deleteMutation logic inside the main hook.
+    const deleteMutation = useMutation({
+        mutationFn: deleteQuestion,
+        onSuccess: () => {
+            toast.success("Question deleted successfully!");
+            queryClient.invalidateQueries({ queryKey: ['questions'] });
+        },
+        onError: (err: Error) => toast.error(err.message),
+    });
+
+    // ✅ FIX: Moved the useQuestionById logic inside the main hook.
+    const useQuestionById = (id: string) => {
+        return useQuery({
+            queryKey: ['question', id],
+            queryFn: () => fetchQuestionById(id),
+            enabled: !!id,
+        });
+    };
+
     return {
         data: questionsQuery.data,
         isLoading: questionsQuery.isLoading,
         isFetching: questionsQuery.isFetching,
         createQuestion: createMutation,
-        // updateQuestion: updateMutation, // You would add update/delete mutations here as well
+        updateQuestion: updateMutation,
+        deleteQuestion: deleteMutation,
+        useQuestionById,
     };
 }
