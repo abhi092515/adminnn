@@ -1,5 +1,4 @@
 "use strict";
-// src/routes/seoUrl.routes.ts
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -34,19 +33,21 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const seoUrlController = __importStar(require("../controllers/seoUrl.controller"));
-const router = (0, express_1.Router)();
-// To get a list of URLs.
-// CORRECT: All handlers are prefixed with 'seoUrlController.'
-router.post('/list', seoUrlController.getAllSeoUrls);
-// To create a new URL.
-router.post('/', seoUrlController.createSeoUrl);
-// To update a URL. This was the source of the first error.
-router.route('/:id')
-    .get(seoUrlController.getSeoUrlById) // ✅ ADDED: The new route for fetching data
-    .put(seoUrlController.updateSeoUrl) // For updating
-    .delete(seoUrlController.deleteSeoUrl);
-// To partially update a URL's priority.
-router.patch('/:id/priority', seoUrlController.updatePriority);
-exports.default = router;
+const mongoose_1 = __importStar(require("mongoose"));
+const instructionSchema = new mongoose_1.Schema({
+    series: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Series',
+    },
+    // ✅ The old 'instruction' field is removed and replaced with these:
+    generalInstructionEnglish: { type: String, trim: true },
+    specificInstructionEnglish: { type: String, trim: true },
+    generalInstructionHindi: { type: String, trim: true },
+    specificInstructionHindi: { type: String, trim: true },
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'active',
+    },
+}, { timestamps: true });
+exports.default = mongoose_1.default.model('Instruction', instructionSchema);

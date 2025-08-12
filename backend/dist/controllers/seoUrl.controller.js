@@ -9,12 +9,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePriority = exports.deleteSeoUrl = exports.updateSeoUrl = exports.createSeoUrl = exports.getAllSeoUrls = void 0;
+exports.getSeoUrlById = exports.updatePriority = exports.deleteSeoUrl = exports.updateSeoUrl = exports.createSeoUrl = exports.getAllSeoUrls = void 0;
 const seoUrl_model_1 = require("../models/seoUrl.model");
 const getAllSeoUrls = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { customer_id } = req.body;
-        const filter = { isActive: true };
+        // ✅ FIX: Changed the filter to be empty by default to fetch ALL URLs.
+        const filter = {};
         if (customer_id) {
             filter.customer_id = customer_id;
         }
@@ -103,3 +104,19 @@ const updatePriority = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.updatePriority = updatePriority;
+const getSeoUrlById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const url = yield seoUrl_model_1.SeoUrl.findById(id);
+        if (!url) {
+            res.status(404).json({ message: 'URL not found.' });
+            return;
+        }
+        // Important: We wrap it in a `data` property to match what the frontend hook expects
+        res.status(200).json({ success: true, data: url });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Error fetching SEO URL', error });
+    }
+});
+exports.getSeoUrlById = getSeoUrlById;

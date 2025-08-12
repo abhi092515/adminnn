@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteTopic = exports.updateTopic = exports.getTopicById = exports.getTopics = exports.createTopic = void 0;
+exports.deleteTopic = exports.getAllTopics = exports.updateTopic = exports.getTopicById = exports.getTopics = exports.createTopic = void 0;
 const Topic_1 = __importDefault(require("../models/Topic"));
 const Section_1 = __importDefault(require("../models/Section")); // Import Section model for validation
 const mongoose_1 = require("mongoose");
@@ -82,22 +82,14 @@ exports.createTopic = createTopic;
 // @access  Public
 const getTopics = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Populate section data, selecting _id and sectionName for more context
-        const topics = yield Topic_1.default.find({}).populate('section', '_id sectionName');
-        if (topics.length > 0) {
-            // If data is found, send 200 OK with the topics
-            res.status(200).json(topics);
-        }
-        else {
-            // If no data is found, send 201 Created with an empty array.
-            // As discussed for GET requests on collections with no results,
-            // 200 OK with an empty array is the more standard and recommended practice.
-            res.status(201).json([]);
-        }
+        const { sectionId } = req.query; // Handle potential filtering
+        const filter = sectionId ? { section: sectionId } : {};
+        const topics = yield Topic_1.default.find(filter).populate('section', 'sectionName id');
+        // ✅ FIX: Always wrap the response in a data object.
+        res.status(200).json({ success: true, data: topics });
     }
     catch (error) {
-        // If an error occurs during the database query, send 500 Internal Server Error
-        res.status(500).json({ message: error.message || 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 });
 exports.getTopics = getTopics;
@@ -175,6 +167,22 @@ const updateTopic = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.updateTopic = updateTopic;
+const getAllTopics = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { sectionId } = req.query; // Get the sectionId from the URL query
+        // Create a filter object. If a sectionId is provided, it will be used.
+        const filter = sectionId ? { section: sectionId } : {};
+        // Find topics using the filter
+        const topics = yield Topic_1.default.find(filter)
+            .populate('section', 'sectionName'); // You can optionally populate the section
+        // Make sure to wrap the response in a `data` property
+        res.status(200).json({ success: true, data: topics });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+exports.getAllTopics = getAllTopics;
 // @desc    Delete a topic
 // @route   DELETE /api/topics/:id
 // @access  Public

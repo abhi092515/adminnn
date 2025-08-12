@@ -37,6 +37,9 @@ const bannerV2Routes_1 = __importDefault(require("./routes/bannerV2Routes"));
 const couponRoutes_1 = __importDefault(require("./routes/couponRoutes"));
 const subscription_routes_1 = __importDefault(require("./routes/subscription.routes"));
 const seoUrl_routes_1 = __importDefault(require("./routes/seoUrl.routes"));
+const subTopic_routes_1 = __importDefault(require("./routes/subTopic.routes"));
+const questionRoutes_1 = __importDefault(require("./routes/questionRoutes"));
+const instruction_routes_1 = __importDefault(require("./routes/instruction.routes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Increase server timeout for large file uploads
@@ -112,6 +115,9 @@ app.use('/api/v2/banners', bannerV2Routes_1.default);
 app.use('/api/coupons', couponRoutes_1.default);
 app.use('/api/subscriptions', subscription_routes_1.default);
 app.use('/api/seourls', seoUrl_routes_1.default);
+app.use('/api/sub-topics', subTopic_routes_1.default);
+app.use('/api/instructions', instruction_routes_1.default);
+app.use('/api/questions', questionRoutes_1.default);
 app.get('/', (req, res) => {
     res.send('API is running...');
 });

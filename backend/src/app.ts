@@ -34,6 +34,7 @@ import couponRoutes from './routes/couponRoutes';
 import subscriptionRoutes from './routes/subscription.routes';
 import seoUrlRoutes from './routes/seoUrl.routes';
 import subTopicRoutes from './routes/subTopic.routes'; 
+import questionRoutes from './routes/questionRoutes';
 import instructionRoutes from './routes/instruction.routes'
 
 
@@ -123,6 +124,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/seourls', seoUrlRoutes);
 app.use('/api/sub-topics', subTopicRoutes); 
 app.use('/api/instructions', instructionRoutes); 
+app.use('/api/questions', questionRoutes);
 
 
 
